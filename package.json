@@ -1,0 +1,15 @@
+{
+	"devDependencies": {
+		"@types/node": "^22.1.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.5.4"
+	},
+	"dependencies": {
+		"@metaplex-foundation/js": "^0.20.1",
+		"@solana/spl-token": "^0.4.8",
+		"@solana/spl-token-metadata": "^0.1.4",
+		"@solana/web3.js": "^1.95.2",
+		"bs58": "^6.0.0",
+		"serjou-tools": "^0.1.0"
+	}
+}
