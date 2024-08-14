@@ -2,5 +2,13 @@
     "name": "Julia",
     "symbol": "Jul",
     "description": "My love",
-    "image": "https://raw.githubusercontent.com/serjou1/solana-playground/master/julia.jpg"
+    "image": "https://raw.githubusercontent.com/serjou1/solana-playground/master/julia.jpg",
+    "properties": {
+    "files": [
+      {
+        "uri": "https://raw.githubusercontent.com/serjou1/solana-playground/master/julia.jpg",
+        "type": "image/jpg"
+      }
+    ]
+  }
 }
