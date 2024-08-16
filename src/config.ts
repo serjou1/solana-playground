@@ -11,11 +11,11 @@ export const txVersion = TxVersion.V0 // or TxVersion.LEGACY
 const cluster = 'devnet'
 
 let raydium: Raydium | undefined
-export const initSdk = async (params: { loadToken?: boolean, owner: Keypair }) => {
+export const initSdk = async (params?: { loadToken?: boolean, owner: Keypair }) => {
     if (raydium) return raydium
-    console.log(`connect to rpc ${connection.rpcEndpoint} in ${cluster}`)
+
     raydium = await Raydium.load({
-        owner: params.owner,
+        owner: params?.owner ?? owner,
         connection,
         cluster,
         disableFeatureCheck: true,

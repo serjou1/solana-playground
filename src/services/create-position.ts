@@ -67,8 +67,8 @@ export const createPosition = async ({
         epochInfo: epochInfo,
     });
 
+    // console.log(res.amountA);
     console.log(res);
-
 
 
 

@@ -11,6 +11,7 @@ import { createPool2 } from "./services/create-pool-2";
 import { createClmmPool } from "./services/create-clmm-pool";
 import { TokenMetadata } from "@solana/spl-token-metadata";
 import { createPosition } from "./services/create-position";
+import { trade } from "./services/trade";
 
 const payer = Keypair.fromSecretKey(bs58.decode("2x8h7ZPWGWRoWiQwJNgTziNS4hpzzmUMUJKvsnZohYfzY8cCtwWfqjvRrG3vdcwi48GMTHyYKmxFVXf4AaETWhSm"));
 console.log(`Payeer: ${payer.publicKey.toBase58()}`);
@@ -30,6 +31,19 @@ const logMassive = (...params) => {
 }
 
 const main4 = async () => {
+
+    const executionPrice = await trade({
+        owner: trader,
+        inputAmount: 2000_000_000_000,
+        inputMint: new PublicKey("Wos9Qe9vtkxgDyvvq8fdryLDKhVPsAF24yP9P7DfXK4"),
+        outputMint: new PublicKey("3NQLBRbD8Ymms2KyRfzey1vRaHYPfQipexR36FvwLH4V"),
+        onlyCalculate: false
+    });
+
+    logMassive("Execution price:", executionPrice)
+
+    return;
+
     const usdtKp = Keypair.generate();
 
     await createNewMint({
@@ -97,7 +111,7 @@ const main4 = async () => {
         mint: usdtKp.publicKey,
         mintAuthority: payer,
         destinationsAccount: payyerUsdtAccount,
-        amount: 10_000_000_000_000
+        amount: 10_000_000
     });
 
     const payerArgAccount = await createTokenAccount({
@@ -111,11 +125,11 @@ const main4 = async () => {
         mint: argentumKp.publicKey,
         mintAuthority: payer,
         destinationsAccount: payerArgAccount,
-        amount: 3_000_000_000_000
+        amount: 3_000
     });
 
     const startPrice = 1000;
-    const endPrice = 2000;
+    const endPrice = 1100;
 
     const initialPrice = (startPrice + endPrice) / 2;
 
@@ -127,8 +141,8 @@ const main4 = async () => {
     const poolId = await createClmmPool(
         {
             owner: payer,
-            mint1Pk: usdtKp.publicKey.toBase58(),
-            mint2Pk: argentumKp.publicKey.toBase58(),
+            mint1Pk: argentumKp.publicKey.toBase58(),
+            mint2Pk: usdtKp.publicKey.toBase58(),
             initialPrice: initialPrice
         }
     );
@@ -176,7 +190,18 @@ const main4 = async () => {
 
     /////////////////////////
 
+    await sleep(10000);
+
     // get price
+    // const executionPrice = await trade({
+    //     owner: payer,
+    //     inputAmount: 100,
+    //     inputMint: usdtKp.publicKey,
+    //     outputMint: argentumKp.publicKey,
+    //     onlyCalculate: true
+    // });
+
+    // logMassive("Execution price:", executionPrice)
 
 
     // move price
