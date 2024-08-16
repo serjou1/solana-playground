@@ -19,6 +19,9 @@ import {
     unpackAccount,
     getTransferFeeAmount,
     setTransferFee,
+    TYPE_SIZE,
+    LENGTH_SIZE,
+    createInitializeMetadataPointerInstruction,
 } from '@solana/spl-token';
 
 import {
@@ -32,25 +35,34 @@ import {
 
 import bs58 from "bs58";
 import { TokenParams } from '../types';
+import { createInitializeInstruction, createUpdateFieldInstruction, pack, TokenMetadata } from '@solana/spl-token-metadata';
 
 const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
-export const createNewMint = async (params: {
+export const createNewMint = async ({
+    payer,
+    transferFeeConfigAuthority,
+    withdrawWithheldAuthority,
+    mintAuthority,
+    mintKeypair,
+    tokenParams,
+    metaData,
+    deployWithFee
+}: {
     payer: Keypair,
     transferFeeConfigAuthority: Keypair,
     withdrawWithheldAuthority: Keypair,
     mintAuthority: Keypair,
     mintKeypair: Keypair,
-    tokenParams: TokenParams
+    tokenParams: TokenParams,
+    metaData: TokenMetadata,
+    deployWithFee: boolean
 }) => {
-    const {
-        payer,
-        transferFeeConfigAuthority,
-        withdrawWithheldAuthority,
-        mintAuthority,
-        mintKeypair,
-        tokenParams
-    } = params;
+    const { updateAuthority } = metaData;
+    // Size of MetadataExtension 2 bytes for type, 2 bytes for length
+    const metadataExtension = TYPE_SIZE + LENGTH_SIZE;
+    // Size of metadata
+    const metadataLen = pack(metaData).length;
 
     const {
         decimals,
@@ -60,11 +72,16 @@ export const createNewMint = async (params: {
 
     const mint = mintKeypair.publicKey;
 
-    const extensions = [ExtensionType.TransferFeeConfig];
+    const extensions = [ExtensionType.MetadataPointer];
+    if (deployWithFee) {
+        extensions.push(ExtensionType.TransferFeeConfig)
+    }
+
     const mintLen = getMintLen(extensions);
 
-    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
-    const mintTransaction = new Transaction().add(
+    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen + metadataExtension + metadataLen);
+
+    const instructions = [
         SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
             newAccountPubkey: mint,
@@ -72,16 +89,49 @@ export const createNewMint = async (params: {
             lamports: mintLamports,
             programId: TOKEN_2022_PROGRAM_ID,
         }),
-        createInitializeTransferFeeConfigInstruction(
-            mint,
-            transferFeeConfigAuthority.publicKey,
-            withdrawWithheldAuthority.publicKey,
-            feeBasisPoints,
-            maxFee,
-            TOKEN_2022_PROGRAM_ID
+        createInitializeMetadataPointerInstruction(
+            mint, // Mint Account address
+            metaData.updateAuthority, // Authority that can set the metadata address
+            mint, // Account address that holds the metadata
+            TOKEN_2022_PROGRAM_ID,
         ),
-        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
-    );
+    ]
+
+    if (deployWithFee) {
+        instructions.push(
+            createInitializeTransferFeeConfigInstruction(
+                mint,
+                transferFeeConfigAuthority.publicKey,
+                withdrawWithheldAuthority.publicKey,
+                feeBasisPoints,
+                maxFee,
+                TOKEN_2022_PROGRAM_ID
+            ),
+        )
+    }
+
+    instructions.push(
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID),
+        createInitializeInstruction({
+            programId: TOKEN_2022_PROGRAM_ID, // Token Extension Program as Metadata Program
+            metadata: mint, // Account address that holds the metadata
+            updateAuthority: updateAuthority, // Authority that can update the metadata
+            mint: mint, // Mint Account address
+            mintAuthority: mintAuthority.publicKey, // Designated Mint Authority
+            name: metaData.name,
+            symbol: metaData.symbol,
+            uri: metaData.uri,
+        }),
+        createUpdateFieldInstruction({
+            programId: TOKEN_2022_PROGRAM_ID, // Token Extension Program as Metadata Program
+            metadata: mint, // Account address that holds the metadata
+            updateAuthority: updateAuthority, // Authority that can update the metadata
+            field: metaData.additionalMetadata[0][0], // key
+            value: metaData.additionalMetadata[0][1], // value
+        })
+    )
+
+    const mintTransaction = new Transaction().add(...instructions);
 
     const tx = await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
 
@@ -122,15 +172,17 @@ export const mintTokens = async (info: {
     mint: PublicKey,
     mintAuthority: Keypair,
     destinationsAccount: PublicKey
+    amount: number
 }) => {
     const {
         payer,
         mint,
         mintAuthority,
-        destinationsAccount
+        destinationsAccount,
+        amount
     } = info;
 
-    const mintAmount = BigInt(1_000_000_000);
+    const mintAmount = BigInt(1_000_000_000 * amount);
 
     const tx = await mintTo(
         connection,
