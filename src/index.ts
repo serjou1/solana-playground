@@ -12,6 +12,10 @@ import { createClmmPool } from "./services/create-clmm-pool";
 import { TokenMetadata } from "@solana/spl-token-metadata";
 import { createPosition } from "./services/create-position";
 import { trade } from "./services/trade";
+import { owner } from "./config";
+import { closePosition } from "./services/close-position";
+import { decreaseLiquidity } from "./services/remove-liquidity";
+import { routeSwap } from "./services/route-swap";
 
 const payer = Keypair.fromSecretKey(bs58.decode("2x8h7ZPWGWRoWiQwJNgTziNS4hpzzmUMUJKvsnZohYfzY8cCtwWfqjvRrG3vdcwi48GMTHyYKmxFVXf4AaETWhSm"));
 console.log(`Payeer: ${payer.publicKey.toBase58()}`);
@@ -32,17 +36,8 @@ const logMassive = (...params) => {
 
 const main4 = async () => {
 
-    const executionPrice = await trade({
-        owner: trader,
-        inputAmount: 2000_000_000_000,
-        inputMint: new PublicKey("Wos9Qe9vtkxgDyvvq8fdryLDKhVPsAF24yP9P7DfXK4"),
-        outputMint: new PublicKey("3NQLBRbD8Ymms2KyRfzey1vRaHYPfQipexR36FvwLH4V"),
-        onlyCalculate: false
-    });
-
-    logMassive("Execution price:", executionPrice)
-
-    return;
+    // await routeSwap();
+    // return
 
     const usdtKp = Keypair.generate();
 
@@ -135,7 +130,7 @@ const main4 = async () => {
 
 
     // return;
-    // // await sleep(20000)
+    // await sleep(20000);
 
     // // create pool on raydium
     const poolId = await createClmmPool(
@@ -159,54 +154,99 @@ const main4 = async () => {
     });
 
     // mint tokens to trader account
-    const traderUsdtAccount = await createTokenAccount({
-        payer,
-        mint: usdtKp.publicKey,
-        owner: trader
-    });
+    // const traderUsdtAccount = await createTokenAccount({
+    //     payer,
+    //     mint: usdtKp.publicKey,
+    //     owner: trader
+    // });
 
-    await mintTokens({
-        payer,
-        mint: usdtKp.publicKey,
-        mintAuthority: payer,
-        destinationsAccount: traderUsdtAccount,
-        amount: 100000
-    });
+    // await mintTokens({
+    //     payer,
+    //     mint: usdtKp.publicKey,
+    //     mintAuthority: payer,
+    //     destinationsAccount: traderUsdtAccount,
+    //     amount: 100000
+    // });
 
-    const traderArgAccount = await createTokenAccount({
-        payer,
-        mint: argentumKp.publicKey,
-        owner: trader
-    });
+    // const traderArgAccount = await createTokenAccount({
+    //     payer,
+    //     mint: argentumKp.publicKey,
+    //     owner: trader
+    // });
 
-    await mintTokens({
-        payer,
-        mint: argentumKp.publicKey,
-        mintAuthority: payer,
-        destinationsAccount: traderArgAccount,
-        amount: 100
-    });
+    // await mintTokens({
+    //     payer,
+    //     mint: argentumKp.publicKey,
+    //     mintAuthority: payer,
+    //     destinationsAccount: traderArgAccount,
+    //     amount: 100
+    // });
 
+
+    // await sleep(5000);
 
     /////////////////////////
 
-    await sleep(10000);
+
 
     // get price
+    const executionPrice = await trade({
+        owner: payer,
+        inputAmount: 10,
+        inputMint: usdtKp.publicKey,
+        outputMint: argentumKp.publicKey,
+        onlyCalculate: true
+    });
+
+    logMassive("Execution price:", executionPrice)
+
+    // move price with trade
+
     // const executionPrice = await trade({
-    //     owner: payer,
-    //     inputAmount: 100,
-    //     inputMint: usdtKp.publicKey,
-    //     outputMint: argentumKp.publicKey,
-    //     onlyCalculate: true
+    //     owner: trader,
+    //     inputAmount: 2000_000_000_000,
+    //     inputMint: new PublicKey("Wos9Qe9vtkxgDyvvq8fdryLDKhVPsAF24yP9P7DfXK4"),
+    //     outputMint: new PublicKey("3NQLBRbD8Ymms2KyRfzey1vRaHYPfQipexR36FvwLH4V"),
+    //     onlyCalculate: false
     // });
 
     // logMassive("Execution price:", executionPrice)
 
+    await sleep(10000);
 
-    // move price
+    // replace liquidity
+
+    await decreaseLiquidity({
+        poolId,
+        owner: payer
+    })
+    // await closePosition({
+    //     poolId,
+    //     owner: payer
+    // });
+
+    await createPosition({
+        payer,
+        poolId,
+        inputAmount: 2000,
+        startPrice: startPrice * 1.5,
+        endPrice: endPrice * 1.5
+    });
+
 
     // get price
+    const newExecutionPrice = await trade({
+        owner: payer,
+        inputAmount: 10,
+        inputMint: usdtKp.publicKey,
+        outputMint: argentumKp.publicKey,
+        onlyCalculate: true
+    });
+
+    logMassive("Execution price:", newExecutionPrice)
+
+
+    //
 }
 
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");

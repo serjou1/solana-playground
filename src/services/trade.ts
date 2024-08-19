@@ -48,7 +48,7 @@ export async function trade({
     // code below is a simple way to cache it, you can implement it with any other ways
     let poolData = readCachePoolData() // initial cache time is 10 mins(1000 * 60 * 10), if wants to cache longer, set bigger number in milliseconds
     // let poolData = readCachePoolData(1000 * 60 * 60 * 24 * 10) // example for cache 1 day
-    if (poolData.ammPools.length === 0) {
+    if (true) {
         console.log('fetching all pool basic info, this might take a while (more than 30 seconds)..')
         // poolData = await raydium.tradeV2.fetchRoutePoolBasicInfo()
         // devent pool info

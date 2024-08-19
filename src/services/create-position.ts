@@ -68,7 +68,7 @@ export const createPosition = async ({
     });
 
     // console.log(res.amountA);
-    console.log(res);
+    // console.log(res);
 
 
 
